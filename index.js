@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const app = express();
+const { DateTime } = require("luxon");
 const port = 3000;
 app.use(express.json()); //express.json() is a built-in middleware provided by Express to parse JSON data from incoming requests.
 app.use(cors());
@@ -17,14 +18,38 @@ mongoose
   .catch((error) => {
     console.log("Error", error);
   });
+//User Schema
 const userSchema = new mongoose.Schema({
   Fullname: String,
   email: String,
   mobile: Number,
   password: String,
 });
-
+//Message Schema
+const messageSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+  },
+  userName: {
+    type: String,
+    required: true,
+  },
+  userEmail: {
+    type: String,
+    required: true,
+  },
+  message: {
+    type: String,
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+});
 const User = mongoose.model("User", userSchema);
+const MessageModel = mongoose.model("messages", messageSchema);
 const key = "123451234av";
 // To get the user data
 
@@ -183,6 +208,57 @@ app.get("/filterUsers", async (req, res) => {
     res.status(500).json({
       msg: "Internal Server Error",
       status: "500",
+    });
+  }
+});
+
+// Message Post & Get Api's
+app.post("/postMessage", async (req, res) => {
+  const { userId, userName, userEmail, message } = req.body;
+  if (!userId || !userName || !userEmail || !message) {
+    return res.json({
+      msg: "User ID, User Name, User Email, and Message are required",
+      status: 400,
+    });
+  }
+  try {
+    const newMessage = new MessageModel(req.body);
+    const savedMessage = await newMessage.save();
+    res.json({
+      message: "Message posted successfully",
+      status: 201,
+      data: savedMessage,
+    });
+  } catch (err) {
+    console.log("Error posting message", err);
+    res.json({
+      message: "Internal Server Error",
+      status: 500,
+      error: JSON.stringify(err),
+    });
+  }
+});
+
+app.get("/getMessage", async (req, res) => {
+  try {
+    console.log(req.body);
+
+    const messages = await MessageModel.find().sort({ timestamp: -1 });
+    console.log(messages);
+    // const formattedMessages = messages.map((msg) => ({
+    //   ...msg._doc,
+    //   timestamp: msg.timestamp.toISOString(), // Format as ISO string or use a library for custom formatting
+    // }));
+    res.json({
+      message: "Messages retrieved successfully",
+      status: 200,
+      data: messages,
+    });
+  } catch (err) {
+    console.error("Error retrieving messages", err);
+    res.json({
+      message: "Internal Server Error",
+      status: 500,
     });
   }
 });
